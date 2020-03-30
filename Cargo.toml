@@ -1,0 +1,7 @@
+[package]
+name = "rusty_robots"
+version = "0.1.0"
+authors = ["Chris Whealy <chris@whealy.com>"]
+edition = "2018"
+
+[dependencies]
