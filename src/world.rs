@@ -1,6 +1,26 @@
 use std::vec::Vec;
+use std::fmt;
 
 use crate::location::Location;
+
+#[derive(Debug, PartialEq, Clone)]
+pub enum Heading {
+  North
+, South
+, East
+, West
+}
+
+impl fmt::Display for Heading {
+  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    let txt = match self {
+      Heading::North => &"N"
+    , Heading::South => &"S"
+    , Heading::East  => &"E"
+    , Heading::West  => &"W"
+    };
+    write!(f, "{}", txt)
+}}
 
 // *********************************************************************************************************************
 // World definition
@@ -31,30 +51,28 @@ impl World {
   // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   // Should I go that way?
   // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  pub fn is_it_safe(&self, x : &i32, y : &i32, heading : &char) -> bool {
+  pub fn is_it_safe(&self, x : &i32, y : &i32, heading : &Heading) -> bool {
     let loc = &self.locations[index_from_x_y(&self.height, &x, &y)];
 
     match heading {
-      'N' => loc.can_go_north,
-      'E' => loc.can_go_east,
-      'S' => loc.can_go_south,
-      'W' => loc.can_go_west,
-      _   => false
+      Heading::North => loc.can_go_north,
+      Heading::East  => loc.can_go_east,
+      Heading::South => loc.can_go_south,
+      Heading::West  => loc.can_go_west
     }
   }
 
   // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   // Going that way was a bad idea...
   // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  pub fn here_be_monsters(&mut self, x : &i32, y : &i32, heading : &char) {
+  pub fn here_be_monsters(&mut self, x : &i32, y : &i32, heading : &Heading) {
     let loc = &mut self.locations[index_from_x_y(&self.height, &x, &y)];
 
     match heading {
-      'N' => loc.can_go_north = false,
-      'E' => loc.can_go_east  = false,
-      'S' => loc.can_go_south = false,
-      'W' => loc.can_go_west  = false,
-      _   => ()
+      Heading::North => loc.can_go_north = false,
+      Heading::East  => loc.can_go_east  = false,
+      Heading::South => loc.can_go_south = false,
+      Heading::West  => loc.can_go_west  = false
     }
   }
 

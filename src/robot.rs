@@ -1,11 +1,11 @@
-use crate::world::World;
+use crate::world::{World, Heading};
 use crate::trace::Trace;
 
 const LIB_NAME     : &str = &"robot";
 const TRACE_ACTIVE : &bool = &false;
 
-const HEADINGS_LEFT :[char; 4] = ['N', 'W', 'S', 'E'];
-const HEADINGS_RIGHT:[char; 4] = ['N', 'E', 'S', 'W'];
+const HEADINGS_LEFT :[Heading; 4] = [Heading::North, Heading::West, Heading::South, Heading::East];
+const HEADINGS_RIGHT:[Heading; 4] = [Heading::North, Heading::East, Heading::South, Heading::West];
 
 // *********************************************************************************************************************
 // Robot definition
@@ -15,7 +15,7 @@ pub struct Robot {
   pub id      : i32
 , pub x       : i32
 , pub y       : i32
-, pub heading : char
+, pub heading : Heading
 , pub is_lost : bool
 }
 
@@ -24,13 +24,19 @@ pub struct Robot {
 // *********************************************************************************************************************
 impl Robot {
   pub fn turn_right(&mut self) {
-    self.heading = *turn(&HEADINGS_RIGHT, &self.heading);
+    self.heading = (*turn(&HEADINGS_RIGHT, &self.heading)).clone();
     Trace::make_trace_fn(TRACE_ACTIVE, LIB_NAME, &"turn_right")(&format!("New heading = {}", &self.heading));
   }
 
   pub fn turn_left(&mut self) {
-    self.heading = *turn(&HEADINGS_LEFT, &self.heading);
+    self.heading = (*turn(&HEADINGS_LEFT, &self.heading)).clone();
     Trace::make_trace_fn(TRACE_ACTIVE, LIB_NAME, &"turn_left")(&format!("New heading = {}", &self.heading));
+  }
+
+  pub fn position(&mut self) -> (&i32, &i32) {
+    Trace::make_trace_fn(TRACE_ACTIVE, LIB_NAME, &"position")
+                        (&format!("Robot {} at ({},{}) heading {}", &self.id, &self.x, &self.y, &self.heading));
+    (&self.x, &self.y)
   }
 
   // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -48,11 +54,10 @@ impl Robot {
       trace(&format!("It appears safe to head {} from ({},{})", &self.heading, &self.x, &self.y));
 
       let (new_x, new_y) = match self.heading {
-        'N' => (self.x,     self.y + 1),
-        'E' => (self.x + 1, self.y),
-        'S' => (self.x,     self.y - 1),
-        'W' => (self.x - 1, self.y),
-        _   => (self.x,     self.y)
+        Heading::North => (self.x,     self.y + 1),
+        Heading::East  => (self.x + 1, self.y),
+        Heading::South => (self.x,     self.y - 1),
+        Heading::West  => (self.x - 1, self.y),
       };
 
       // Moving forward always moves the robot out of its current location,
@@ -87,7 +92,7 @@ impl Robot {
   // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   // Constructor
   // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  pub fn new(id : i32, x : i32, y : i32, heading : char) -> Robot {
+  pub fn new(id : i32, x : i32, y : i32, heading : Heading) -> Robot {
     Robot{
       id
     , x
@@ -98,7 +103,50 @@ impl Robot {
   }
 }
 
-fn turn<'a>(headings : &'a [char; 4], hdg : &char) -> &'a char {
-  let idx = headings.iter().position(|&h| &h == hdg).unwrap();
+fn turn<'a>(headings : &'a [Heading; 4], hdg : &Heading) -> &'a Heading {
+  let idx = headings.iter().position(|h| h == hdg).unwrap();
   &headings[(idx + 1) % 4]
+}
+
+
+// *********************************************************************************************************************
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  #[test]
+  fn spin_right() {
+    let mut test_bot = Robot::new(1,1,1, Heading::North);
+
+    test_bot.turn_right();  assert_eq!(test_bot.heading, Heading::East);
+    test_bot.turn_right();  assert_eq!(test_bot.heading, Heading::South);
+    test_bot.turn_right();  assert_eq!(test_bot.heading, Heading::West);
+    test_bot.turn_right();  assert_eq!(test_bot.heading, Heading::North);
+  }
+
+  #[test]
+  fn spin_left() {
+    let mut test_bot = Robot::new(1,1,1, Heading::North);
+
+    test_bot.turn_left();  assert_eq!(test_bot.heading, Heading::West);
+    test_bot.turn_left();  assert_eq!(test_bot.heading, Heading::South);
+    test_bot.turn_left();  assert_eq!(test_bot.heading, Heading::East);
+    test_bot.turn_left();  assert_eq!(test_bot.heading, Heading::North);
+  }
+
+  #[test]
+  fn navigate() {
+    let mut test_bot   = Robot::new(1,1,1, Heading::North);
+    let mut test_world = World::new(&5, &5);
+
+    test_bot.forward(&mut test_world);
+    assert_eq!(test_bot.position(),(&1, &2));
+
+    test_bot.turn_left();
+    assert_eq!(test_bot.heading, Heading::West);
+
+    test_bot.forward(&mut test_world);
+    test_bot.forward(&mut test_world);
+    assert!(test_bot.is_lost);
+  }  
 }

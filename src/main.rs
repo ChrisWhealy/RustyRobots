@@ -8,7 +8,7 @@ pub mod world;
 pub mod trace;
 
 use crate::robot::Robot;
-use crate::world::World;
+use crate::world::{World, Heading};
 use crate::trace::Trace;
 
 const LIB_NAME     : &str  = &"main";
@@ -27,7 +27,7 @@ fn main() -> std::io::Result<()> {
   let mut raw_input : Vec<u8> = Vec::new();
   
   // Dummy initial robot
-  let mut robot    : Robot = Robot::new(0,0,0,'N');
+  let mut robot    : Robot = Robot::new(0,0,0, Heading::North);
   let mut robot_id : i32 = 0;
   
   // Read first line and create the world
@@ -78,7 +78,7 @@ fn main() -> std::io::Result<()> {
     else {
       let x = line_iter.next().unwrap().parse::<i32>().unwrap();
       let y = line_iter.next().unwrap().parse::<i32>().unwrap();
-      let heading = line_iter.next().unwrap().chars().next().unwrap().to_ascii_uppercase();
+      let hdg = gen_heading(&line_iter.next().unwrap().chars().next().unwrap().to_ascii_uppercase());
 
       // Check that new location is within the world's boundaries
       if x <= width as i32  && y <= height as i32 {
@@ -87,9 +87,9 @@ fn main() -> std::io::Result<()> {
           println!("ERROR: Cannot create robot at location ({},{}) - already occupied", x, y);
         }
         else {
-          robot = Robot::new(robot_id, x, y, heading);
+          robot = Robot::new(robot_id, x, y, hdg.clone());
           world.place_robot_at(&robot_id, &x, &y);
-          trace(&format!("New robot created at ({},{}) heading {}", x, y, heading));
+          trace(&format!("New robot created at ({},{}) heading {}", x, y, &hdg));
           robot_id += 1;
         }
       }
@@ -105,5 +105,15 @@ fn main() -> std::io::Result<()> {
 
   trace_boundary(&Some(false));
   Ok(())
+}
+
+fn gen_heading(hdg : &char) -> Heading {
+  match hdg {
+    'N' => Heading::North
+  , 'S' => Heading::South
+  , 'E' => Heading::East
+  , 'W' => Heading::West
+  ,   _ => Heading::North
+  }
 }
 
