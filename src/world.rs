@@ -18,7 +18,8 @@ const PARSE_ERROR_BAD_HEIGHT   : &str = &"World height must be an integer";
 
 const ERROR_INVALID_WORLD_DIMS : &str = &"Both world dimensions must be in the range 1 to 50";
 
-pub const EOF_ENCOUNTERED : &str = &"EOF stdin";
+pub const PROMPT_NEW_WORLD : &str = &"Enter width and height of world";
+pub const EOF_ENCOUNTERED  : &str = &"EOF stdin";
 
 // *********************************************************************************************************************
 // World definition
@@ -34,7 +35,7 @@ pub struct World {
 // World implementation
 // *********************************************************************************************************************
 impl World {
-  pub fn is_location_occupied(&self, x : i32, y : i32) -> bool {
+  pub fn is_location_occupied(&self, x : &i32, y : &i32) -> bool {
     &self.locations[index_from_x_y(&self.height, &x, &y)].id != &-1
   }
 
@@ -90,22 +91,20 @@ impl World {
 // Create a new world from stdin data
 // *********************************************************************************************************************
 pub fn create_world() -> Result<World, &'static str> {
-  let mut stdin                = BufReader::new(std::io::stdin());
-  let mut stdin_data : Vec<u8> = Vec::new();
+  // Keep reading stdin until we get some valid world dimensions or hit EOF
+  prompt(PROMPT_NEW_WORLD);
 
-  // Keep reading stdin until we get some valid world dimensions
-  loop {
-    if stdin.read_until(b'\n', &mut stdin_data).unwrap() == 0 {
-      return Err(EOF_ENCOUNTERED);
-    }
-
-    match str::from_utf8(&stdin_data).unwrap().trim().parse::<Dimensions>() {
+  for stdin_data in BufReader::new(std::io::stdin()).lines() {
+    match &stdin_data.unwrap().trim().parse::<Dimensions>() {
       Ok(dims)     => return Ok(World::new(&dims.width, &dims.height))
-    , Err(err_msg) => eprintln!("Error: {}", err_msg)
+    , Err(err_msg) => {
+        eprintln!("Error: {}", err_msg);
+        prompt(PROMPT_NEW_WORLD);
+      }
     }
-
-    stdin_data.clear();
   }
+
+  Err(EOF_ENCOUNTERED)
 }
 
 // *********************************************************************************************************************
@@ -167,13 +166,18 @@ fn index_from_x_y(height : &i32, x : &i32, y : &i32) -> usize {
 fn create_world_locations(width : &i32, height : &i32) -> Vec<Location> {
   let mut w : Vec<Location> = vec!();
 
-  for i in 0..*height+1 {
-    for j in 0..*width+1 {
+  for i in 0..*height {
+    for j in 0..*width {
       w.push(Location::new(j, i));
     }
   }
 
   w
+}
+
+fn prompt(prompt_msg : &str) {
+  print!("{} : ", prompt_msg);
+  let _ = std::io::stdout().flush();
 }
 
 // *********************************************************************************************************************

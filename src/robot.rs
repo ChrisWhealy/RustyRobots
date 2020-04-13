@@ -13,8 +13,7 @@ use crate::world::{
 , WORLD_MIN_WIDTH
 };
 
-
-const LIB_NAME     : &str = &"robot";
+const LIB_NAME     : &str  = module_path!();
 const TRACE_ACTIVE : &bool = &false;
 
 const HEADINGS_LEFT :[Heading; 4] = [Heading::North, Heading::West, Heading::South, Heading::East];
@@ -28,7 +27,9 @@ const PARSE_ERROR_BAD_Y_VAL     : &str = &"New robot's Y location must be an int
 
 const ERROR_OUTSIDE_WORLD_BOUNDS : &str = &"Robot location lies outside permissible world boundaries";
 
-pub const EOF_ENCOUNTERED : &str = &"EOF stdin";
+pub const PROMPT_NEW_ROBOT : &str = &"Enter the zero-based location and heading for a new robot";
+pub const PROMPT_MOVE_TURN : &str = &"Enter move/turn instructions";
+pub const EOF_ENCOUNTERED  : &str = &"EOF stdin";
 
 // *********************************************************************************************************************
 // Robot definition
@@ -79,6 +80,7 @@ impl Robot {
 
     trace_boundary(&Some(true));
 
+    // Check whether any previous robot has died by venturing in this direction from this location
     if world.is_it_safe(&self.x, &self.y, &self.heading) {
       trace(&format!("It appears safe to head {} from ({},{})", &self.heading, &self.x, &self.y));
 
@@ -89,27 +91,33 @@ impl Robot {
         Heading::West  => (self.x - 1, self.y),
       };
 
-      // Moving forward always moves the robot out of its current location,
-      // irrespective of whether or not this move will kill it
-      world.remove_robot_from(&self.x, &self.y);
-
-      // Did we just die?
-      if (new_y < 0 || new_y > world.height) ||
-         (new_x < 0 || new_x > world.width) {
-        trace(&"Bad idea - I died!");
-       // Warn other robots not to venture this way
-        world.here_be_monsters(&self.x, &self.y, &self.heading);
-
-        // The robot is now lost, but its last known location needs to be printed, so don't update x and y
+      // Does the new location lie inside the world?
+      if (new_y < 0 || new_y >= world.height) ||
+         (new_x < 0 || new_x >= world.width) {
+        // Nope - KABOOM!
+        trace(&"Ouch! Just been eaten by monsters!");
+        // The robot is now lost so remove it from the world, warn other robots not to venture this way,
+        // but don't update its x and y values because its last known location needs to be printed
         self.is_lost = true;
+        world.remove_robot_from(&self.x, &self.y);
+        world.here_be_monsters(&self.x, &self.y, &self.heading);
       }
       else {
-        // Update the robot's position and update the world grid
-        self.x = new_x;
-        self.y = new_y;
-        world.place_robot_at(&self.id, &self.x, &self.y);
-        trace(&format!("Robot {} is now at ({},{}) heading {}", &self.id, &self.x, &self.y, &self.heading));
+        // Is the proposed location already occupied?
+        if world.is_location_occupied(&new_x, &new_y) {
+          // Yup, so ignore this instruction
+          eprintln!("Can't go {} from ({},{}) - location already occupied!", &self.heading, &new_x, &new_y);
+        }
+        else {
+          // Nope, so update the robot's position and update the world grid
+          world.remove_robot_from(&self.x, &self.y);
+          self.x = new_x;
+          self.y = new_y;
+          world.place_robot_at(&self.id, &self.x, &self.y);
+          trace(&format!("Robot {} is now at ({},{}) heading {}", &self.id, &self.x, &self.y, &self.heading));
+        }
       }
+    
     }
     else {
       trace(&format!("Ignoring instruction to head {} from ({},{}) - here be monsters!", &self.heading, &self.x, &self.y));
@@ -122,6 +130,13 @@ impl Robot {
   // Obey a set of move/turn instructions
   // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   pub fn turn_and_move(&mut self, line : &str, world : &mut World) {
+    const FN_NAME : &str = &"turn_and_move";
+
+    let trace_boundary = Trace::make_boundary_trace_fn(TRACE_ACTIVE, LIB_NAME, FN_NAME);
+    let trace          = Trace::make_trace_fn(TRACE_ACTIVE, LIB_NAME, FN_NAME);
+
+    trace_boundary(&Some(true));
+
     let mut line_iter = line.split_ascii_whitespace();
 
     for c in line_iter.next().unwrap().to_ascii_uppercase().chars() {
@@ -135,10 +150,12 @@ impl Robot {
           'R' => self.turn_right(),
           'L' => self.turn_left(),
           'F' => self.forward(world),
-          _   => break
+          _z  => trace(&format!("Ignoring invalid move/turn command '{}'", _z))
         }
       }
     }
+
+    trace_boundary(&Some(false));
   }
 
   // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -176,14 +193,14 @@ pub fn create_robot(line_arg : &str, world : &mut World, robot_id : &i32) -> Res
     match line.parse::<Robot>() {
       Ok(mut robot) => {
         // Check that new location is within the world's boundaries
-        if robot.x <= world.width  &&
-           robot.y <= world.height {
-          // Check if the world location already contains a robot
-          if world.is_location_occupied(robot.x, robot.y) {
+        if robot.x < world.width  &&
+           robot.y < world.height {
+          // Does the proposed location already contain a robot?
+          if world.is_location_occupied(&robot.x, &robot.y) {
             eprintln!("ERROR: Cannot create robot at location ({},{}) - already occupied", robot.x, robot.y);
           }
           else {
-            // The robot's location is valid, so assign it the next id
+            // The robot's location is valid, so assign it the next id and place it at that world location
             robot.id = *robot_id;
             world.place_robot_at(&robot_id, &robot.x, &robot.y);
             trace(&format!("New robot created at ({},{}) heading {}", robot.x, robot.y, robot.heading));
@@ -200,6 +217,8 @@ pub fn create_robot(line_arg : &str, world : &mut World, robot_id : &i32) -> Res
 
     // Wait for next line from stdin
     stdin_data.clear();
+    prompt(PROMPT_NEW_ROBOT);
+
     if stdin.read_until(b'\n', &mut stdin_data).unwrap() == 0 {
       return Err(EOF_ENCOUNTERED);
     }
@@ -244,9 +263,10 @@ impl str::FromStr for Robot {
     };
 
     // At this point in time, the only test we can perform on the robot's location is whether or not it falls within the
-    // maximum and minimum permissible world boundaries
-    if x >= WORLD_MIN_WIDTH  && x <= WORLD_MAX_WIDTH &&
-       y >= WORLD_MIN_HEIGHT && y <= WORLD_MAX_HEIGHT {
+    // maximum and minimum permissible world boundaries.
+    // Robot's (X,Y) location is zero-based, world dimensions are one-based
+    if x >= WORLD_MIN_WIDTH-1  && x < WORLD_MAX_WIDTH &&
+       y >= WORLD_MIN_HEIGHT-1 && y < WORLD_MAX_HEIGHT {
       // The validity of the robot's location and its id are unknowable at this point in time
       // The id will be assigned once the caller has validated the robot's location
       Ok(Robot {
@@ -271,6 +291,10 @@ fn turn<'a>(headings : &'a [Heading; 4], hdg : &Heading) -> &'a Heading {
   &headings[(idx + 1) % 4]
 }
 
+fn prompt(prompt_msg : &str) {
+  print!("{} : ", prompt_msg);
+  let _ = std::io::stdout().flush();
+}
 
 // *********************************************************************************************************************
 // Suppose we'd better test it...
