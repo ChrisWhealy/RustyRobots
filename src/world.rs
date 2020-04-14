@@ -26,7 +26,7 @@ pub const PROMPT_NEW_WORLD : &str = &"Enter width and height of world";
 pub const EOF_ENCOUNTERED  : &str = &"EOF stdin";
 
 const FORMAT_CHAR_VERT  : &str = &"|";
-const FORMAT_CHAR_HORIZ : &str = &"----";
+const FORMAT_CHAR_HORIZ : &str = &"-";
 
 // *********************************************************************************************************************
 // World definition
@@ -46,23 +46,14 @@ impl fmt::Display for World {
     let _ = write!(fmt, "\n");
 
     // Write top line
-    for _ in 0..self.width {
-      let _ = write!(fmt, "{}", FORMAT_CHAR_HORIZ);
-    }
-
-    let _ = write!(fmt, "\n");
+    write_horiz_line(fmt, &self.width);
 
     for i in (0..self.height).rev() {
       for j in 0..self.width {
         let idx = index_from_x_y(&self.width, &j, &i);
         let this_loc : &Location = &self.locations[idx];
-        let mut id : &str = &this_loc.id.to_string();
-
-        if &this_loc.id == &-1 {
-          id = &" ";
-        };
-
-        let _ = write!(fmt, "{} {} ", FORMAT_CHAR_VERT, id);
+        let id : &str = &this_loc.id.to_string();
+        let _ = write!(fmt, "{} {} ", FORMAT_CHAR_VERT, if &this_loc.id == &-1 { &" " } else { id });
       }
 
       // Write line terminator format character
@@ -70,9 +61,7 @@ impl fmt::Display for World {
     }
 
     // Write bottom line
-    for _ in 0..self.width {
-      let _ = write!(fmt, "{}", FORMAT_CHAR_HORIZ);
-    }
+    write_horiz_line(fmt, &self.width);
 
     Ok(())
   }
@@ -224,6 +213,14 @@ fn create_world_locations(width : &i32, height : &i32) -> Vec<Location> {
 fn prompt(prompt_msg : &str) {
   print!("{} : ", prompt_msg);
   let _ = std::io::stdout().flush();
+}
+
+fn write_horiz_line(fmt: &mut fmt::Formatter, width : &i32) {
+  for _ in 0..(*width * 4) {
+    let _ = write!(fmt, "{}", FORMAT_CHAR_HORIZ);
+  }
+
+  let _ = write!(fmt, "{}\n", FORMAT_CHAR_HORIZ);
 }
 
 // *********************************************************************************************************************

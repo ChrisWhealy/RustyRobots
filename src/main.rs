@@ -24,7 +24,7 @@ use crate::robot::{
 };
 
 const LIB_NAME     : &str  = module_path!();
-const TRACE_ACTIVE : &bool = &false;
+const TRACE_ACTIVE : &bool = &true;
 
 // *********************************************************************************************************************
 fn main() -> std::io::Result<()> {
