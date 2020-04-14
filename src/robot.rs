@@ -111,9 +111,9 @@ impl Robot {
         else {
           // Nope, so update the robot's position and update the world grid
           world.remove_robot_from(&self.x, &self.y);
+          world.place_robot_at(&self.id, &new_x, &new_y);
           self.x = new_x;
           self.y = new_y;
-          world.place_robot_at(&self.id, &self.x, &self.y);
           trace(&format!("Robot {} is now at ({},{}) heading {}", &self.id, &self.x, &self.y, &self.heading));
         }
       }
@@ -155,6 +155,7 @@ impl Robot {
       }
     }
 
+    println!("{}", &self);
     trace_boundary(&Some(false));
   }
 

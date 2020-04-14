@@ -1,10 +1,14 @@
+use std::{str, fmt};
 use std::vec::Vec;
-use std::str;
 use std::io::prelude::*;
 use std::io::BufReader;
 
 use crate::location::Location;
 use crate::heading::Heading;
+use crate::trace::Trace;
+
+const LIB_NAME     : &str  = module_path!();
+const TRACE_ACTIVE : &bool = &false;
 
 pub const WORLD_MIN_WIDTH  : i32 = 1;
 pub const WORLD_MIN_HEIGHT : i32 = 1;
@@ -21,6 +25,9 @@ const ERROR_INVALID_WORLD_DIMS : &str = &"Both world dimensions must be in the r
 pub const PROMPT_NEW_WORLD : &str = &"Enter width and height of world";
 pub const EOF_ENCOUNTERED  : &str = &"EOF stdin";
 
+const FORMAT_CHAR_VERT  : &str = &"|";
+const FORMAT_CHAR_HORIZ : &str = &"----";
+
 // *********************************************************************************************************************
 // World definition
 // *********************************************************************************************************************
@@ -28,30 +35,69 @@ pub const EOF_ENCOUNTERED  : &str = &"EOF stdin";
 pub struct World {
   pub width     : i32
 , pub height    : i32
-,     locations : Vec<Location>
+, pub locations : Vec<Location>
 }
 
 // *********************************************************************************************************************
 // World implementation
 // *********************************************************************************************************************
+impl fmt::Display for World {
+  fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+    let _ = write!(fmt, "\n");
+
+    // Write top line
+    for _ in 0..self.width {
+      let _ = write!(fmt, "{}", FORMAT_CHAR_HORIZ);
+    }
+
+    let _ = write!(fmt, "\n");
+
+    for i in (0..self.height).rev() {
+      for j in 0..self.width {
+        let idx = index_from_x_y(&self.width, &j, &i);
+        let this_loc : &Location = &self.locations[idx];
+        let mut id : &str = &this_loc.id.to_string();
+
+        if &this_loc.id == &-1 {
+          id = &" ";
+        };
+
+        let _ = write!(fmt, "{} {} ", FORMAT_CHAR_VERT, id);
+      }
+
+      // Write line terminator format character
+      let _ = writeln!(fmt, "{}", FORMAT_CHAR_VERT);
+    }
+
+    // Write bottom line
+    for _ in 0..self.width {
+      let _ = write!(fmt, "{}", FORMAT_CHAR_HORIZ);
+    }
+
+    Ok(())
+  }
+}
+
 impl World {
   pub fn is_location_occupied(&self, x : &i32, y : &i32) -> bool {
-    &self.locations[index_from_x_y(&self.height, &x, &y)].id != &-1
+    &self.locations[index_from_x_y(&self.width, &x, &y)].id != &-1
   }
 
   pub fn place_robot_at(&mut self, robot_id : &i32, x : &i32, y : &i32) {
-    self.locations[index_from_x_y(&self.height, &x, &y)].id = *robot_id;
+    Trace::make_trace_fn(TRACE_ACTIVE, LIB_NAME, &"place_robot_at")(&format!("Robot id {} now occupies location ({},{})", &robot_id, &x, &y));
+    self.locations[index_from_x_y(&self.width, &x, &y)].id = *robot_id;
   }
 
   pub fn remove_robot_from(&mut self, x : &i32, y : &i32) {
-    self.locations[index_from_x_y(&self.height, &x, &y)].id = -1;
+    Trace::make_trace_fn(TRACE_ACTIVE, LIB_NAME, &"place_robot_at")(&format!("Robot removed from location ({},{})", &x, &y));
+    self.locations[index_from_x_y(&self.width, &x, &y)].id = -1;
   }
 
   // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   // Should I go that way?
   // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   pub fn is_it_safe(&self, x : &i32, y : &i32, heading : &Heading) -> bool {
-    let loc = &self.locations[index_from_x_y(&self.height, &x, &y)];
+    let loc = &self.locations[index_from_x_y(&self.width, &x, &y)];
 
     match heading {
       Heading::North => loc.can_go_north,
@@ -65,7 +111,7 @@ impl World {
   // Going that way was a bad idea...
   // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   pub fn here_be_monsters(&mut self, x : &i32, y : &i32, heading : &Heading) {
-    let loc = &mut self.locations[index_from_x_y(&self.height, &x, &y)];
+    let loc = &mut self.locations[index_from_x_y(&self.width, &x, &y)];
 
     match heading {
       Heading::North => loc.can_go_north = false,
@@ -159,8 +205,8 @@ impl str::FromStr for Dimensions {
 // *********************************************************************************************************************
 // Private API
 // *********************************************************************************************************************
-fn index_from_x_y(height : &i32, x : &i32, y : &i32) -> usize {
-  (y * height + x) as usize  
+fn index_from_x_y(width : &i32, x : &i32, y : &i32) -> usize {
+  (y * width + x) as usize  
 }
 
 fn create_world_locations(width : &i32, height : &i32) -> Vec<Location> {

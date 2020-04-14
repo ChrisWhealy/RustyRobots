@@ -27,10 +27,10 @@ impl Location {
       id : -1               // Location currently unoccupied
     , x
     , y
-    , can_go_north : true   // Currently, it's safe to go in this directions
-    , can_go_south : true   // Currently, it's safe to go in this directions
-    , can_go_east  : true   // Currently, it's safe to go in this directions
-    , can_go_west  : true   // Currently, it's safe to go in this directions
+    , can_go_north : true   // Currently, it's safe to go in this direction
+    , can_go_south : true   // Currently, it's safe to go in this direction
+    , can_go_east  : true   // Currently, it's safe to go in this direction
+    , can_go_west  : true   // Currently, it's safe to go in this direction
     }
   }
 }

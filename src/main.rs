@@ -64,22 +64,21 @@ fn main() -> std::io::Result<()> {
                   )
          );
 
-    let line = stdin_data.unwrap();
-    
     // Even numbered lines should contain a move/turn instruction set
     if line_count % 2 == 0 {
       // Obey move/turn instruction set then print robot status
-      robot.turn_and_move(line.trim(), &mut world);
-      println!("{}", &robot);
+      robot.turn_and_move(stdin_data.unwrap().trim(), &mut world);
+      trace(&world.to_string());
       prompt(PROMPT_NEW_ROBOT);
     }
     // Odd numbered lines should contain a new robot definition
     else {
       // Try to create a new robot
-      match create_robot(line.trim(), &mut world, &robot_id) {
+      match create_robot(stdin_data.unwrap().trim(), &mut world, &robot_id) {
         Ok(r)    => {
           robot = r;
           robot_id += 1;
+          trace(&world.to_string());
           prompt(PROMPT_MOVE_TURN);
         }
       , Err(err) =>
