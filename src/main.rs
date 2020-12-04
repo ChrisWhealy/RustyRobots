@@ -1,4 +1,4 @@
-use std::io::prelude::*;
+use std::io::prelude::{BufRead, Write};
 use std::io::BufReader;
 use std::str;
 
